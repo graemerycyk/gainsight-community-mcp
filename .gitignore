@@ -15,3 +15,8 @@ env/
 .ruff_cache/
 *.log
 .DS_Store
+
+# MCP configuration (may contain credentials)
+mcp.json
+.mcp.json
+.mcp/
