@@ -9,6 +9,7 @@ import respx
 from src.client import GainsightClient, REGION_BASE_URLS
 
 EU_BASE = REGION_BASE_URLS["eu-west-1"]
+US_BASE = REGION_BASE_URLS["us-west-2"]
 
 
 @pytest.fixture(autouse=True)
@@ -348,6 +349,52 @@ async def test_get_topic_by_id(respx_mock: respx.MockRouter, client: GainsightCl
     result = await client.get_topic_by_id(42)
     assert result["result"][0]["contentType"] == "question"
     await client.close()
+
+
+# ---- Region tests ----
+
+
+def test_eu_region_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GS_CC_REGION", "eu-west-1")
+    client = GainsightClient()
+    assert client.base_url == "https://api2-eu-west-1.insided.com"
+
+
+def test_us_region_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GS_CC_REGION", "us-west-2")
+    client = GainsightClient()
+    assert client.base_url == "https://api2-us-west-2.insided.com"
+
+
+def test_default_region_is_eu(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("GS_CC_REGION", raising=False)
+    client = GainsightClient()
+    assert client.region == "eu-west-1"
+    assert client.base_url == "https://api2-eu-west-1.insided.com"
+
+
+@respx.mock(base_url=US_BASE)
+async def test_us_region_api_call(
+    respx_mock: respx.MockRouter, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify US region client sends requests to the correct base URL."""
+    monkeypatch.setenv("GS_CC_REGION", "us-west-2")
+    us_client = GainsightClient()
+
+    respx_mock.post("/oauth2/token").mock(
+        return_value=httpx.Response(
+            200, json={"access_token": "tok-us", "expires_in": 3600}
+        )
+    )
+    respx_mock.get("/v2/categories").mock(
+        return_value=httpx.Response(
+            200, json={"result": [{"id": "1", "name": "US Category"}]}
+        )
+    )
+
+    result = await us_client.list_categories()
+    assert result["result"][0]["name"] == "US Category"
+    await us_client.close()
 
 
 # ---- Error cases ----
