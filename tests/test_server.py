@@ -14,6 +14,15 @@ from src.server import (
     get_topic,
     list_ideas,
     list_categories,
+    list_tags,
+    get_category,
+    get_category_tree,
+    get_category_topic_counts,
+    list_topics_by_category,
+    list_idea_statuses,
+    list_product_areas,
+    get_poll_results,
+    get_reply,
 )
 
 
@@ -25,6 +34,9 @@ def _reset_client() -> None:
 
 def _make_client_mock() -> AsyncMock:
     return AsyncMock()
+
+
+# ---- search_community ----
 
 
 async def test_search_community() -> None:
@@ -49,6 +61,9 @@ async def test_search_community_with_pagination() -> None:
 
     assert result == {"result": []}
     mock.search.assert_called_once_with({"q": "api", "page": 2, "pageSize": 10})
+
+
+# ---- list_topics ----
 
 
 async def test_list_topics_no_filter() -> None:
@@ -81,6 +96,53 @@ async def test_list_topics_filtered_by_article() -> None:
         result = json.loads(await list_topics(content_type="article"))
 
     mock.list_articles.assert_called_once()
+
+
+async def test_list_topics_with_category_and_tag_filters() -> None:
+    mock = _make_client_mock()
+    mock.list_topics.return_value = {"result": [{"id": "10"}]}
+
+    with patch.object(server_module, "_client", mock):
+        result = json.loads(
+            await list_topics(category_ids="1,2", tags="api,sso", page_size=5)
+        )
+
+    assert result["result"][0]["id"] == "10"
+    call_params = mock.list_topics.call_args[0][0]
+    assert call_params["categoryIds"] == "1,2"
+    assert call_params["tags"] == "api,sso"
+    assert call_params["pageSize"] == 5
+
+
+async def test_list_topics_with_date_filters() -> None:
+    mock = _make_client_mock()
+    mock.list_topics.return_value = {"result": []}
+
+    with patch.object(server_module, "_client", mock):
+        await list_topics(created_after="2024-01-01", active_before="2024-06-01")
+
+    call_params = mock.list_topics.call_args[0][0]
+    assert "createdAt" in call_params
+    assert "lastActivity" in call_params
+    created = json.loads(call_params["createdAt"])
+    assert created == {"from": "2024-01-01"}
+    activity = json.loads(call_params["lastActivity"])
+    assert activity == {"to": "2024-06-01"}
+
+
+async def test_list_topics_with_sort_and_content_types() -> None:
+    mock = _make_client_mock()
+    mock.list_topics.return_value = {"result": []}
+
+    with patch.object(server_module, "_client", mock):
+        await list_topics(content_types="question,idea", sort="createdAt")
+
+    call_params = mock.list_topics.call_args[0][0]
+    assert call_params["contentTypes"] == "question,idea"
+    assert call_params["sort"] == "createdAt"
+
+
+# ---- get_topic ----
 
 
 async def test_get_topic_tool() -> None:
@@ -118,6 +180,9 @@ async def test_get_topic_not_found() -> None:
     assert "error" in result
 
 
+# ---- list_ideas ----
+
+
 async def test_list_ideas_tool() -> None:
     mock = _make_client_mock()
     mock.list_ideas.return_value = {"result": [{"id": "7", "contentType": "idea"}]}
@@ -127,6 +192,9 @@ async def test_list_ideas_tool() -> None:
 
     assert result["result"][0]["contentType"] == "idea"
     mock.list_ideas.assert_called_once()
+
+
+# ---- list_categories ----
 
 
 async def test_list_categories_tool() -> None:
@@ -139,3 +207,185 @@ async def test_list_categories_tool() -> None:
         result = json.loads(await list_categories())
 
     assert result["result"][0]["name"] == "General"
+
+
+# ---- list_tags ----
+
+
+async def test_list_tags_tool() -> None:
+    mock = _make_client_mock()
+    mock.list_tags.return_value = {"result": [{"id": "1", "name": "api"}]}
+
+    with patch.object(server_module, "_client", mock):
+        result = json.loads(await list_tags())
+
+    assert result["result"][0]["name"] == "api"
+    mock.list_tags.assert_called_once()
+
+
+async def test_list_tags_with_pagination() -> None:
+    mock = _make_client_mock()
+    mock.list_tags.return_value = {"result": []}
+
+    with patch.object(server_module, "_client", mock):
+        await list_tags(page=2, page_size=10)
+
+    mock.list_tags.assert_called_once_with({"page": 2, "pageSize": 10})
+
+
+# ---- get_category ----
+
+
+async def test_get_category_tool() -> None:
+    mock = _make_client_mock()
+    mock.get_category.return_value = {"id": "5", "name": "Feature Requests"}
+
+    with patch.object(server_module, "_client", mock):
+        result = json.loads(await get_category(category_id=5))
+
+    assert result["name"] == "Feature Requests"
+    mock.get_category.assert_called_once_with(5)
+
+
+# ---- get_category_tree ----
+
+
+async def test_get_category_tree_tool() -> None:
+    mock = _make_client_mock()
+    tree = {"result": [{"id": "1", "name": "Root", "children": []}]}
+    mock.get_category_tree.return_value = tree
+
+    with patch.object(server_module, "_client", mock):
+        result = json.loads(await get_category_tree())
+
+    assert result["result"][0]["name"] == "Root"
+    mock.get_category_tree.assert_called_once()
+
+
+# ---- get_category_topic_counts ----
+
+
+async def test_get_category_topic_counts_tool() -> None:
+    mock = _make_client_mock()
+    mock.get_category_topic_counts.return_value = {
+        "result": [{"categoryId": "1", "count": 42}]
+    }
+
+    with patch.object(server_module, "_client", mock):
+        result = json.loads(await get_category_topic_counts())
+
+    assert result["result"][0]["count"] == 42
+    mock.get_category_topic_counts.assert_called_once()
+
+
+# ---- list_topics_by_category ----
+
+
+async def test_list_topics_by_category_tool() -> None:
+    mock = _make_client_mock()
+    mock.list_topics_by_category.return_value = {
+        "result": [{"id": "10", "title": "In category"}]
+    }
+
+    with patch.object(server_module, "_client", mock):
+        result = json.loads(await list_topics_by_category(category_id=3))
+
+    assert result["result"][0]["title"] == "In category"
+    mock.list_topics_by_category.assert_called_once_with(3, {})
+
+
+async def test_list_topics_by_category_with_filters() -> None:
+    mock = _make_client_mock()
+    mock.list_topics_by_category.return_value = {"result": []}
+
+    with patch.object(server_module, "_client", mock):
+        await list_topics_by_category(
+            category_id=3, tags="api", sort="createdAt", page_size=10
+        )
+
+    call_args = mock.list_topics_by_category.call_args
+    assert call_args[0][0] == 3
+    params = call_args[0][1]
+    assert params["tags"] == "api"
+    assert params["sort"] == "createdAt"
+    assert params["pageSize"] == 10
+
+
+async def test_list_topics_by_category_with_date_filters() -> None:
+    mock = _make_client_mock()
+    mock.list_topics_by_category.return_value = {"result": []}
+
+    with patch.object(server_module, "_client", mock):
+        await list_topics_by_category(
+            category_id=3, created_after="2024-01-01", created_before="2024-12-31"
+        )
+
+    params = mock.list_topics_by_category.call_args[0][1]
+    created = json.loads(params["createdAt"])
+    assert created == {"from": "2024-01-01", "to": "2024-12-31"}
+
+
+# ---- list_idea_statuses ----
+
+
+async def test_list_idea_statuses_tool() -> None:
+    mock = _make_client_mock()
+    mock.list_idea_statuses.return_value = {
+        "result": [{"id": "1", "name": "Planned"}]
+    }
+
+    with patch.object(server_module, "_client", mock):
+        result = json.loads(await list_idea_statuses())
+
+    assert result["result"][0]["name"] == "Planned"
+    mock.list_idea_statuses.assert_called_once()
+
+
+# ---- list_product_areas ----
+
+
+async def test_list_product_areas_tool() -> None:
+    mock = _make_client_mock()
+    mock.list_product_areas.return_value = {
+        "result": [{"id": "1", "name": "Platform"}]
+    }
+
+    with patch.object(server_module, "_client", mock):
+        result = json.loads(await list_product_areas())
+
+    assert result["result"][0]["name"] == "Platform"
+    mock.list_product_areas.assert_called_once()
+
+
+# ---- get_poll_results ----
+
+
+async def test_get_poll_results_tool() -> None:
+    mock = _make_client_mock()
+    mock.get_poll_results.return_value = {
+        "title": "Best feature?",
+        "votes": [{"option": "Search", "count": 15}],
+    }
+
+    with patch.object(server_module, "_client", mock):
+        result = json.loads(await get_poll_results(topic_id=7, content_type="question"))
+
+    assert result["title"] == "Best feature?"
+    mock.get_poll_results.assert_called_once_with("question", 7)
+
+
+# ---- get_reply ----
+
+
+async def test_get_reply_tool() -> None:
+    mock = _make_client_mock()
+    mock.get_reply.return_value = {"id": "200", "content": "Helpful answer"}
+
+    with patch.object(server_module, "_client", mock):
+        result = json.loads(
+            await get_reply(topic_id=5, reply_id=200, content_type="article")
+        )
+
+    assert result["id"] == "200"
+    assert result["content"] == "Helpful answer"
+    mock.get_reply.assert_called_once_with("article", 5, 200)

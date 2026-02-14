@@ -161,5 +161,61 @@ class GainsightClient:
         """List tags.  GET /v2/tags"""
         return await self._request("GET", "/v2/tags", params=params)
 
+    async def list_moderator_tags(self, params: dict[str, Any] | None = None) -> Any:
+        """List moderator tags.  GET /v2/moderatorTags"""
+        return await self._request("GET", "/v2/moderatorTags", params=params)
+
+    async def get_category(self, category_id: int) -> Any:
+        """Get a single category by ID.  GET /v2/categories/{id}"""
+        return await self._request("GET", f"/v2/categories/{category_id}")
+
+    async def get_category_tree(self) -> Any:
+        """Get the full category hierarchy.  GET /v2/category/getTree"""
+        return await self._request("GET", "/v2/category/getTree")
+
+    async def get_category_topic_counts(self) -> Any:
+        """Get visible topic counts per category.  GET /v2/categories/getVisibleTopicsCount"""
+        return await self._request("GET", "/v2/categories/getVisibleTopicsCount")
+
+    async def list_topics_by_category(
+        self, category_id: int, params: dict[str, Any] | None = None
+    ) -> Any:
+        """List topics for a specific category.  GET /v2/categories/{id}/topics"""
+        return await self._request(
+            "GET", f"/v2/categories/{category_id}/topics", params=params
+        )
+
+    async def list_idea_statuses(self) -> Any:
+        """List idea statuses.  GET /v2/ideas/ideaStatuses"""
+        return await self._request("GET", "/v2/ideas/ideaStatuses")
+
+    async def list_product_areas(self) -> Any:
+        """List product areas.  GET /v2/productAreas"""
+        return await self._request("GET", "/v2/productAreas")
+
+    async def get_poll_results(self, content_type: str, topic_id: int) -> Any:
+        """Get poll results for a topic.  GET /v2/{contentTypes}/{id}/poll"""
+        path_segment = CONTENT_TYPE_PATHS.get(content_type)
+        if not path_segment:
+            raise ValueError(
+                f"Unknown content type '{content_type}'. "
+                f"Supported: {', '.join(CONTENT_TYPE_PATHS)}"
+            )
+        return await self._request("GET", f"/v2/{path_segment}/{topic_id}/poll")
+
+    async def get_reply(
+        self, content_type: str, topic_id: int, reply_id: int
+    ) -> Any:
+        """Get a single reply by ID.  GET /v2/{contentTypes}/{id}/replies/{replyId}"""
+        path_segment = CONTENT_TYPE_PATHS.get(content_type)
+        if not path_segment:
+            raise ValueError(
+                f"Unknown content type '{content_type}'. "
+                f"Supported: {', '.join(CONTENT_TYPE_PATHS)}"
+            )
+        return await self._request(
+            "GET", f"/v2/{path_segment}/{topic_id}/replies/{reply_id}"
+        )
+
     async def close(self) -> None:
         await self._http.aclose()

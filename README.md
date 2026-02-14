@@ -7,10 +7,15 @@ A third-party [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) s
 ## Features
 
 - **Search** community content by keyword across all content types
-- **List & filter topics** by type, category, tags, date range, and more
+- **List & filter topics** by type, category, tags, date range, sort order, and more
 - **Retrieve full topic details** including body content and replies
 - **Browse ideas** and feature requests with vote counts
-- **List categories** to discover community structure
+- **Explore categories** — list, get details, view hierarchy tree, and topic counts
+- **View tags** and product areas for filtering and discovery
+- **Check idea statuses** to understand the feature pipeline
+- **Read poll results** and individual replies
+
+All 14 tools are **read-only** — safe to use with AI agents.
 
 ## Prerequisites
 
@@ -120,16 +125,26 @@ Search community content by keyword across all content types.
 
 ### `list_topics`
 
-List community topics, optionally filtered by content type.
+List community topics with optional filtering and sorting. When `content_type` is set, routes to the type-specific endpoint. For richer multi-type filtering, use the other parameters which query the unified endpoint.
 
 ```
 "Show me all questions in the community"
-"List all articles"
+"List topics tagged 'api' created after 2024-01-01"
+"Show questions and ideas sorted by creation date"
 ```
 
 | Param | Type | Description |
 |-------|------|-------------|
-| `content_type` | string | Filter to: `article`, `conversation`, `question`, `idea`, `productUpdate` |
+| `content_type` | string | Route to a single type: `article`, `conversation`, `question`, `idea`, `productUpdate` |
+| `category_ids` | string | Comma-separated category IDs (unified endpoint only) |
+| `tags` | string | Comma-separated public tags |
+| `moderator_tags` | string | Comma-separated moderator tags |
+| `content_types` | string | Comma-separated content types, e.g. `"question,idea"` (unified endpoint only) |
+| `sort` | string | Sort field: `"createdAt"`, `"lastActivity"` (descending) |
+| `created_after` | string | ISO date — topics created on or after this date |
+| `created_before` | string | ISO date — topics created on or before this date |
+| `active_after` | string | ISO date — topics with activity on or after this date |
+| `active_before` | string | ISO date — topics with activity on or before this date |
 | `page` | int | Page number (starts at 1) |
 | `page_size` | int | Results per page |
 
@@ -152,7 +167,76 @@ List feature ideas/requests from the community.
 
 ### `list_categories`
 
-List all community categories with their IDs — useful for discovering community structure.
+List all community categories with their IDs — useful for discovering community structure and getting IDs for `list_topics_by_category`.
+
+### `list_tags`
+
+List all public tags used in the community. Useful for discovering tags before filtering topics.
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `page` | int | Page number (starts at 1) |
+| `page_size` | int | Results per page |
+
+### `get_category`
+
+Get details for a single category by its ID.
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `category_id` | int (required) | The numeric ID of the category |
+
+### `get_category_tree`
+
+Get the full category hierarchy as a tree structure. Returns parent/child relationships between categories.
+
+### `get_category_topic_counts`
+
+Get the number of visible topics in each category. Useful for a quick community overview or identifying the most active areas.
+
+### `list_topics_by_category`
+
+List topics within a specific category with optional filtering.
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `category_id` | int (required) | The numeric ID of the category |
+| `tags` | string | Comma-separated public tags |
+| `moderator_tags` | string | Comma-separated moderator tags |
+| `sort` | string | Sort field: `"createdAt"`, `"lastActivity"` (descending) |
+| `created_after` | string | ISO date — topics created on or after this date |
+| `created_before` | string | ISO date — topics created on or before this date |
+| `active_after` | string | ISO date — topics with activity on or after this date |
+| `active_before` | string | ISO date — topics with activity on or before this date |
+| `page` | int | Page number (starts at 1) |
+| `page_size` | int | Results per page |
+
+### `list_idea_statuses`
+
+List all idea statuses (e.g. "New", "Planned", "Shipped"). Useful for understanding the idea pipeline stages.
+
+### `list_product_areas`
+
+List all product areas defined in the community. Product areas are used to categorise ideas and product updates.
+
+### `get_poll_results`
+
+Get poll results for a topic that has a poll attached.
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `topic_id` | int (required) | The numeric ID of the topic |
+| `content_type` | string (required) | The content type: `article`, `conversation`, `question`, `idea`, or `productUpdate` |
+
+### `get_reply`
+
+Fetch a single reply by its ID.
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `topic_id` | int (required) | The numeric ID of the parent topic |
+| `reply_id` | int (required) | The numeric ID of the reply |
+| `content_type` | string (required) | The content type: `article`, `conversation`, `question`, `idea`, or `productUpdate` |
 
 ## Example Prompts
 
@@ -163,6 +247,11 @@ Once configured, you can ask your AI assistant things like:
 - *"Show me all questions from last week that haven't been answered"*
 - *"List all categories in our community"*
 - *"Get the full thread for topic 12345"*
+- *"Show me the category tree so I can understand the community structure"*
+- *"Which categories have the most topics?"*
+- *"What idea statuses are configured?"*
+- *"List all topics in the 'Feature Requests' category tagged 'api'"*
+- *"Show the poll results for topic 789"*
 
 ## Development
 
@@ -192,6 +281,9 @@ gainsight-community-mcp/
 ├── tests/
 │   ├── test_client.py     # API client tests (mocked HTTP via respx)
 │   └── test_server.py     # MCP tool tests (mocked client)
+├── .github/
+│   └── workflows/
+│       └── ci.yml         # GitHub Actions CI (Python 3.11–3.13)
 ├── pyproject.toml         # Project config, deps, build settings
 ├── Dockerfile
 ├── CLAUDE.md              # AI assistant development guidelines

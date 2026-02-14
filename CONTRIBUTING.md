@@ -53,7 +53,8 @@ All tests use mocked HTTP responses — no API credentials are needed to run the
 1. **Add an API method** in `src/client.py`:
    ```python
    async def get_user(self, user_id: int) -> Any:
-       return await self._request("GET", f"/api/v2/users/{user_id}")
+       """Get a user by ID.  GET /v2/users/{id}"""
+       return await self._request("GET", f"/v2/users/{user_id}")
    ```
 
 2. **Add a tool function** in `src/server.py`:

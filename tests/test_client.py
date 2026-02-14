@@ -158,6 +158,153 @@ async def test_list_tags(respx_mock: respx.MockRouter, client: GainsightClient) 
     await client.close()
 
 
+@respx.mock(base_url=EU_BASE)
+async def test_list_moderator_tags(respx_mock: respx.MockRouter, client: GainsightClient) -> None:
+    _mock_token(respx_mock)
+    respx_mock.get("/v2/moderatorTags").mock(
+        return_value=httpx.Response(
+            200, json={"result": [{"id": "1", "name": "internal"}]}
+        )
+    )
+
+    result = await client.list_moderator_tags()
+    assert result["result"][0]["name"] == "internal"
+    await client.close()
+
+
+# ---- Category endpoints ----
+
+
+@respx.mock(base_url=EU_BASE)
+async def test_get_category(respx_mock: respx.MockRouter, client: GainsightClient) -> None:
+    _mock_token(respx_mock)
+    respx_mock.get("/v2/categories/5").mock(
+        return_value=httpx.Response(
+            200, json={"id": "5", "name": "Feature Requests"}
+        )
+    )
+
+    result = await client.get_category(5)
+    assert result["id"] == "5"
+    assert result["name"] == "Feature Requests"
+    await client.close()
+
+
+@respx.mock(base_url=EU_BASE)
+async def test_get_category_tree(respx_mock: respx.MockRouter, client: GainsightClient) -> None:
+    _mock_token(respx_mock)
+    tree = {"result": [{"id": "1", "name": "Root", "children": [{"id": "2", "name": "Child"}]}]}
+    respx_mock.get("/v2/category/getTree").mock(
+        return_value=httpx.Response(200, json=tree)
+    )
+
+    result = await client.get_category_tree()
+    assert result["result"][0]["children"][0]["name"] == "Child"
+    await client.close()
+
+
+@respx.mock(base_url=EU_BASE)
+async def test_get_category_topic_counts(respx_mock: respx.MockRouter, client: GainsightClient) -> None:
+    _mock_token(respx_mock)
+    counts = {"result": [{"categoryId": "1", "count": 42}]}
+    respx_mock.get("/v2/categories/getVisibleTopicsCount").mock(
+        return_value=httpx.Response(200, json=counts)
+    )
+
+    result = await client.get_category_topic_counts()
+    assert result["result"][0]["count"] == 42
+    await client.close()
+
+
+@respx.mock(base_url=EU_BASE)
+async def test_list_topics_by_category(respx_mock: respx.MockRouter, client: GainsightClient) -> None:
+    _mock_token(respx_mock)
+    respx_mock.get("/v2/categories/3/topics").mock(
+        return_value=httpx.Response(
+            200, json={"result": [{"id": "10", "title": "In category"}]}
+        )
+    )
+
+    result = await client.list_topics_by_category(3, {"pageSize": 5})
+    assert result["result"][0]["title"] == "In category"
+    await client.close()
+
+
+# ---- Idea statuses & product areas ----
+
+
+@respx.mock(base_url=EU_BASE)
+async def test_list_idea_statuses(respx_mock: respx.MockRouter, client: GainsightClient) -> None:
+    _mock_token(respx_mock)
+    statuses = {"result": [{"id": "1", "name": "Planned", "type": "PLANNED"}]}
+    respx_mock.get("/v2/ideas/ideaStatuses").mock(
+        return_value=httpx.Response(200, json=statuses)
+    )
+
+    result = await client.list_idea_statuses()
+    assert result["result"][0]["name"] == "Planned"
+    await client.close()
+
+
+@respx.mock(base_url=EU_BASE)
+async def test_list_product_areas(respx_mock: respx.MockRouter, client: GainsightClient) -> None:
+    _mock_token(respx_mock)
+    areas = {"result": [{"id": "1", "name": "Platform"}]}
+    respx_mock.get("/v2/productAreas").mock(
+        return_value=httpx.Response(200, json=areas)
+    )
+
+    result = await client.list_product_areas()
+    assert result["result"][0]["name"] == "Platform"
+    await client.close()
+
+
+# ---- Poll results ----
+
+
+@respx.mock(base_url=EU_BASE)
+async def test_get_poll_results(respx_mock: respx.MockRouter, client: GainsightClient) -> None:
+    _mock_token(respx_mock)
+    poll = {"title": "Favourite colour?", "votes": [{"option": "Blue", "count": 10}]}
+    respx_mock.get("/v2/questions/7/poll").mock(
+        return_value=httpx.Response(200, json=poll)
+    )
+
+    result = await client.get_poll_results("question", 7)
+    assert result["title"] == "Favourite colour?"
+    assert result["votes"][0]["count"] == 10
+    await client.close()
+
+
+@respx.mock(base_url=EU_BASE)
+async def test_get_poll_results_invalid_type(client: GainsightClient) -> None:
+    with pytest.raises(ValueError, match="Unknown content type"):
+        await client.get_poll_results("invalid", 1)
+
+
+# ---- Single reply ----
+
+
+@respx.mock(base_url=EU_BASE)
+async def test_get_reply(respx_mock: respx.MockRouter, client: GainsightClient) -> None:
+    _mock_token(respx_mock)
+    reply = {"id": "200", "content": "Great answer"}
+    respx_mock.get("/v2/articles/5/replies/200").mock(
+        return_value=httpx.Response(200, json=reply)
+    )
+
+    result = await client.get_reply("article", 5, 200)
+    assert result["id"] == "200"
+    assert result["content"] == "Great answer"
+    await client.close()
+
+
+@respx.mock(base_url=EU_BASE)
+async def test_get_reply_invalid_type(client: GainsightClient) -> None:
+    with pytest.raises(ValueError, match="Unknown content type"):
+        await client.get_reply("invalid", 1, 1)
+
+
 # ---- Topic detail ----
 
 

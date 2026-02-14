@@ -24,25 +24,43 @@ These descriptions help agents understand when to use each tool:
 | Tool | When to Use |
 |------|-------------|
 | `search_community` | User wants to find content by keyword. Best for broad, text-based searches across all content types. |
-| `list_topics` | User wants to browse topics. Set `content_type` to filter to a specific type (question, article, idea, conversation, productUpdate). Without a type, returns all content. |
+| `list_topics` | User wants to browse or filter topics. Supports category, tag, date range, sort, and content type filtering. Set `content_type` for type-specific endpoints, or use `content_types`, `category_ids`, `tags`, `sort`, and date params for unified filtering. |
 | `get_topic` | User wants the full content and replies of a specific topic (needs a topic ID from search/list results). Automatically resolves content type. |
 | `list_ideas` | User wants to see feature requests or ideas. Dedicated shortcut for idea content. |
 | `list_categories` | User wants to understand the community structure. Often a good first step. |
+| `list_tags` | User wants to discover available tags for filtering. Useful before calling `list_topics` with tag filters. |
+| `get_category` | User wants details about a specific category (needs a category ID). |
+| `get_category_tree` | User wants to see the full category hierarchy with parent/child relationships. |
+| `get_category_topic_counts` | User wants a quick overview of which categories are most active. |
+| `list_topics_by_category` | User wants to browse topics within a specific category, with optional tag/date/sort filtering. |
+| `list_idea_statuses` | User wants to understand the idea pipeline (e.g. "New", "Planned", "Shipped"). |
+| `list_product_areas` | User wants to see the product area taxonomy used to categorise ideas and product updates. |
+| `get_poll_results` | User wants to see poll votes on a specific topic. Requires topic ID and content type. |
+| `get_reply` | User wants to read a specific reply. Requires topic ID, reply ID, and content type. |
 
 ## Typical Agent Workflows
 
 ### Discovery Flow
 1. `list_categories` — understand community structure
-2. `list_topics(content_type="question")` — browse questions
-3. `get_topic(topic_id=...)` — read a specific thread with replies
+2. `get_category_tree` — see the full hierarchy
+3. `get_category_topic_counts` — identify active areas
+4. `list_topics_by_category(category_id=...)` — browse a specific category
+5. `get_topic(topic_id=...)` — read a specific thread with replies
 
 ### Search Flow
 1. `search_community(query="...")` — find matching content
 2. `get_topic(topic_id=...)` — drill into a specific result
 
 ### Ideas/Roadmap Flow
-1. `list_ideas()` — see community ideas
-2. `get_topic(topic_id=...)` — read full idea discussion with replies
+1. `list_idea_statuses()` — understand the pipeline stages
+2. `list_product_areas()` — see the product taxonomy
+3. `list_ideas()` — browse community ideas
+4. `get_topic(topic_id=...)` — read full idea discussion with replies
+
+### Filtered Browsing Flow
+1. `list_tags()` — discover available tags
+2. `list_topics(tags="api,sso", sort="createdAt")` — filter topics
+3. `get_topic(topic_id=...)` — read a specific result
 
 ## Data Flow
 
@@ -63,6 +81,13 @@ get_topic           →     1. Lookup: GET /v2/topics?id=42
                           3. Detail: GET /v2/questions/42
                           4. Replies: GET /v2/questions/42/replies
                     ←     Merge detail + replies, return JSON
+
+list_topics         →     Build params with     →  GET /v2/topics?tags=api&sort=createdAt
+  tags="api"              date range serialisation     &createdAt={"from":"2024-01-01"}
+  sort="createdAt"        (JSON objects for dates)
+  created_after=
+    "2024-01-01"
+                    ←     Parse JSON response  ←   200 OK + {"result": [...]}
 ```
 
 ## Authentication Architecture
@@ -90,10 +115,15 @@ The Gainsight Customer Communities API uses **content-type-specific endpoints**:
 | question | `GET /v2/questions` | `GET /v2/questions/{id}` | `GET /v2/questions/{id}/replies` |
 | conversation | `GET /v2/conversations` | `GET /v2/conversations/{id}` | `GET /v2/conversations/{id}/replies` |
 | article | `GET /v2/articles` | `GET /v2/articles/{id}` | `GET /v2/articles/{id}/replies` |
-| idea | `GET /v2/ideas` | `GET /v2/ideas/{id}` | — |
+| idea | `GET /v2/ideas` | `GET /v2/ideas/{id}` | `GET /v2/ideas/{id}/replies` |
 | productUpdate | `GET /v2/productUpdates` | `GET /v2/productUpdates/{id}` | `GET /v2/productUpdates/{id}/replies` |
 
-Other endpoints: `/v2/categories`, `/v2/tags`, `/v2/topics/search`
+Other endpoints:
+- `/v2/categories`, `/v2/categories/{id}`, `/v2/category/getTree`, `/v2/categories/getVisibleTopicsCount`, `/v2/categories/{id}/topics`
+- `/v2/tags`, `/v2/moderatorTags`
+- `/v2/ideas/ideaStatuses`, `/v2/productAreas`
+- `/v2/{type}s/{id}/poll`, `/v2/{type}s/{id}/replies/{replyId}`
+- `/v2/topics/search`
 
 Pagination: `pageSize` and `page` (1-indexed). Default page size is 25.
 
@@ -106,24 +136,22 @@ Currently, HTTP errors propagate as `httpx.HTTPStatusError` exceptions. The MCP 
 
 ## Extending the Server
 
-### Adding New Tools
+### Adding Write Operations
 
-The Gainsight Customer Communities API has additional endpoints not yet exposed as MCP tools:
+The Gainsight API supports write operations (creating content, replying, voting, moderation) via `scope=write`. To add write tools:
 
-| Potential Tool | API Endpoint | Use Case |
-|----------------|-------------|----------|
-| `list_tags` | `GET /v2/tags` | Discover available tags (client method exists) |
-| `list_product_updates` | `GET /v2/productUpdates` | Product changelog (client method exists) |
-| `list_questions` | `GET /v2/questions` | Dedicated question listing |
-| `list_conversations` | `GET /v2/conversations` | Dedicated conversation listing |
-| `list_articles` | `GET /v2/articles` | Dedicated article listing |
-| `get_user` | `GET /user` | Community member profiles |
+1. Update OAuth2 scope to `read write` in `client.py` (or make it configurable)
+2. Add POST-based client methods for the desired endpoints
+3. Add corresponding MCP tools with appropriate safety guardrails
+4. Consider confirmation patterns for destructive actions
 
-### Adding Resources
+See the [API docs](https://api2-eu-west-1.insided.com/docs/) for available write endpoints.
+
+### Adding Resources and Prompts
 
 MCP also supports **resources** (read-only data) and **prompts** (templated interactions). Future versions could expose:
 
-- **Resources**: Community stats, category tree, tag cloud
+- **Resources**: Community stats, category tree snapshot, tag cloud
 - **Prompts**: "Summarize top ideas this month", "Find unanswered questions"
 
 ## Multi-Agent Considerations
