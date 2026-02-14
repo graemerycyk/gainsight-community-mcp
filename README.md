@@ -8,7 +8,7 @@ A third-party [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) s
 
 - **Search** community content by keyword across all content types
 - **List & filter topics** by type, category, tags, date range, and more
-- **Retrieve full topic details** including replies
+- **Retrieve full topic details** including body content and replies
 - **Browse ideas** and feature requests with vote counts
 - **List categories** to discover community structure
 
@@ -32,7 +32,7 @@ For more detail, see the [API documentation](https://developer.insided.com/).
 ### Local
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/gainsight-community-mcp.git
+git clone https://github.com/graemerycyk/gainsight-community-mcp.git
 cd gainsight-community-mcp
 pip install .
 ```
@@ -44,6 +44,14 @@ docker build -t gainsight-community-mcp .
 ```
 
 ## Configuration
+
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GS_CC_CLIENT_ID` | Yes | — | OAuth2 client ID from your community admin panel |
+| `GS_CC_CLIENT_SECRET` | Yes | — | OAuth2 client secret |
+| `GS_CC_REGION` | No | `eu-west-1` | API region: `eu-west-1` or `us-west-2` |
 
 ### Claude Desktop
 
@@ -111,7 +119,7 @@ Search community content by keyword across all content types.
 | `tags` | string | Comma-separated public tags |
 | `sort` | string | `lastActivityAt`, `createdAt`, `likes`, `voteCount`, `replyCount` |
 | `page` | int | Page number |
-| `page_size` | int | Results per page (1–100) |
+| `page_size` | int | Results per page (1-100) |
 
 ### `list_topics`
 
@@ -137,13 +145,29 @@ List and filter community topics with rich filtering options.
 
 Retrieve full details for a specific topic, including body content and replies.
 
+| Param | Type | Description |
+|-------|------|-------------|
+| `topic_id` | int (required) | The numeric ID of the topic |
+
 ### `list_ideas`
 
 List feature ideas/requests, sorted by votes or activity. Convenience wrapper that filters topics to ideas only.
 
+| Param | Type | Description |
+|-------|------|-------------|
+| `sort` | string | Sort field, e.g. `voteCount`, `createdAt`, `lastActivityAt` |
+| `tags` | string | Comma-separated public tags |
+| `created_after` | string | ISO date |
+| `created_before` | string | ISO date |
+| `page` / `page_size` | int | Pagination |
+
 ### `list_categories`
 
 List all community categories with their IDs — useful for filtering topics by category.
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `page` / `page_size` | int | Pagination |
 
 ## Example Prompts
 
@@ -154,6 +178,53 @@ Once configured, you can ask your AI assistant things like:
 - *"Show me all questions from last week that haven't been answered"*
 - *"List all categories in our community"*
 - *"Get the full thread for topic 12345"*
+
+## Development
+
+### Setup
+
+```bash
+git clone https://github.com/graemerycyk/gainsight-community-mcp.git
+cd gainsight-community-mcp
+pip install -e ".[dev]"
+```
+
+### Running Tests
+
+```bash
+pytest
+```
+
+### Project Structure
+
+```
+gainsight-community-mcp/
+├── src/
+│   ├── __init__.py
+│   ├── __main__.py        # Entry point for python -m src
+│   ├── client.py          # Async HTTP client with OAuth2 auth
+│   └── server.py          # FastMCP server with tool definitions
+├── tests/
+│   ├── test_client.py     # API client tests (mocked HTTP via respx)
+│   └── test_server.py     # MCP tool tests (mocked client)
+├── pyproject.toml         # Project config, deps, build settings
+├── Dockerfile
+├── CLAUDE.md              # AI assistant development guidelines
+├── AGENTS.md              # Architecture and agent integration docs
+├── CONTRIBUTING.md        # Contribution guidelines
+├── LICENSE                # MIT
+└── README.md
+```
+
+### Key Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `mcp` | Model Context Protocol SDK (FastMCP server) |
+| `httpx` | Async HTTP client for Gainsight API calls |
+| `pytest` | Test framework |
+| `pytest-asyncio` | Async test support |
+| `respx` | HTTP request mocking for tests |
 
 ## API Documentation
 
@@ -167,8 +238,11 @@ MIT — see [LICENSE](LICENSE) for details.
 
 ## Contributing
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/my-feature`)
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
+3. Run the tests (`pytest`)
+4. Commit your changes
+5. Push to the branch
+6. Open a Pull Request
