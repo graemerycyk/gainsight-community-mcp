@@ -242,16 +242,29 @@ Fetch a single reply by its ID.
 
 Once configured, you can ask your AI assistant things like:
 
+**Search & browse:**
 - *"Search our community for posts about dark mode"*
 - *"What are the top 10 most voted ideas?"*
 - *"Show me all questions from last week that haven't been answered"*
-- *"List all categories in our community"*
 - *"Get the full thread for topic 12345"*
-- *"Show me the category tree so I can understand the community structure"*
+- *"List all topics tagged 'api' sorted by creation date"*
+- *"Show me questions and ideas created after 2025-01-01"*
+
+**Explore community structure:**
+- *"Show me the category tree"*
 - *"Which categories have the most topics?"*
+- *"List all categories in our community"*
+- *"What tags are available?"*
+- *"List all product areas"*
+
+**Ideas & roadmap:**
 - *"What idea statuses are configured?"*
 - *"List all topics in the 'Feature Requests' category tagged 'api'"*
+- *"Show me all ideas with the status 'Planned'"*
+
+**Polls & replies:**
 - *"Show the poll results for topic 789"*
+- *"Get reply 456 from question 123"*
 
 ## Development
 
