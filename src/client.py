@@ -15,6 +15,15 @@ REGION_BASE_URLS = {
 
 TOKEN_PATH = "/oauth2/token"
 
+# Maps content type names to their API path segments
+CONTENT_TYPE_PATHS = {
+    "article": "articles",
+    "conversation": "conversations",
+    "question": "questions",
+    "idea": "ideas",
+    "productUpdate": "productUpdates",
+}
+
 
 class GainsightClient:
     """Async client for the Gainsight Customer Communities API using OAuth2."""
@@ -51,6 +60,7 @@ class GainsightClient:
                 "grant_type": "client_credentials",
                 "client_id": self.client_id,
                 "client_secret": self.client_secret,
+                "scope": "read",
             },
         )
         resp.raise_for_status()
@@ -71,31 +81,85 @@ class GainsightClient:
             method,
             path,
             params=params,
-            headers={"Authorization": f"Bearer {self._access_token}"},
+            headers={
+                "Authorization": f"Bearer {self._access_token}",
+                "Accept": "*/*",
+            },
         )
         resp.raise_for_status()
         return resp.json()
 
-    # ---- public helpers ----
+    # ---- public API methods ----
 
     async def search(self, params: dict[str, Any]) -> Any:
-        return await self._request("GET", "/api/v2/search", params=params)
+        """Search topics by keyword.  GET /v2/topics/search"""
+        return await self._request("GET", "/v2/topics/search", params=params)
 
     async def list_topics(self, params: dict[str, Any]) -> Any:
-        return await self._request("GET", "/api/v2/topics", params=params)
+        """List all topics.  GET /v2/topics"""
+        return await self._request("GET", "/v2/topics", params=params)
 
-    async def get_topic(self, topic_id: int) -> Any:
-        return await self._request("GET", f"/api/v2/topics/{topic_id}")
+    async def list_questions(self, params: dict[str, Any]) -> Any:
+        """List questions.  GET /v2/questions"""
+        return await self._request("GET", "/v2/questions", params=params)
+
+    async def list_conversations(self, params: dict[str, Any]) -> Any:
+        """List conversations.  GET /v2/conversations"""
+        return await self._request("GET", "/v2/conversations", params=params)
+
+    async def list_articles(self, params: dict[str, Any]) -> Any:
+        """List articles.  GET /v2/articles"""
+        return await self._request("GET", "/v2/articles", params=params)
+
+    async def list_ideas(self, params: dict[str, Any]) -> Any:
+        """List ideas.  GET /v2/ideas"""
+        return await self._request("GET", "/v2/ideas", params=params)
+
+    async def list_product_updates(self, params: dict[str, Any]) -> Any:
+        """List product updates.  GET /v2/productUpdates"""
+        return await self._request("GET", "/v2/productUpdates", params=params)
+
+    async def get_topic_detail(self, content_type: str, topic_id: int) -> Any:
+        """Get a single topic by content type and ID.
+
+        GET /v2/{contentTypes}/{id}  (e.g. /v2/questions/42)
+        """
+        path_segment = CONTENT_TYPE_PATHS.get(content_type)
+        if not path_segment:
+            raise ValueError(
+                f"Unknown content type '{content_type}'. "
+                f"Supported: {', '.join(CONTENT_TYPE_PATHS)}"
+            )
+        return await self._request("GET", f"/v2/{path_segment}/{topic_id}")
 
     async def get_topic_replies(
-        self, topic_id: int, params: dict[str, Any] | None = None
+        self, content_type: str, topic_id: int, params: dict[str, Any] | None = None
     ) -> Any:
+        """Get replies for a topic.
+
+        GET /v2/{contentTypes}/{id}/replies
+        """
+        path_segment = CONTENT_TYPE_PATHS.get(content_type)
+        if not path_segment:
+            raise ValueError(
+                f"Unknown content type '{content_type}'. "
+                f"Supported: {', '.join(CONTENT_TYPE_PATHS)}"
+            )
         return await self._request(
-            "GET", f"/api/v2/topics/{topic_id}/replies", params=params
+            "GET", f"/v2/{path_segment}/{topic_id}/replies", params=params
         )
 
+    async def get_topic_by_id(self, topic_id: int) -> Any:
+        """Look up a topic by ID (any content type).  GET /v2/topics?id={id}"""
+        return await self._request("GET", "/v2/topics", params={"id": topic_id})
+
     async def list_categories(self, params: dict[str, Any] | None = None) -> Any:
-        return await self._request("GET", "/api/v2/categories", params=params)
+        """List categories.  GET /v2/categories"""
+        return await self._request("GET", "/v2/categories", params=params)
+
+    async def list_tags(self, params: dict[str, Any] | None = None) -> Any:
+        """List tags.  GET /v2/tags"""
+        return await self._request("GET", "/v2/tags", params=params)
 
     async def close(self) -> None:
         await self._http.aclose()

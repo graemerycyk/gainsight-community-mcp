@@ -109,41 +109,33 @@ Search community content by keyword across all content types.
 
 ```
 "Search the community for posts about SSO integration"
-"Find questions tagged 'api' created after 2025-01-01"
+"Find posts mentioning API"
 ```
 
 | Param | Type | Description |
 |-------|------|-------------|
 | `query` | string (required) | Search term |
-| `content_types` | string[] | Filter: `article`, `conversation`, `question`, `idea`, `productUpdate` |
-| `tags` | string | Comma-separated public tags |
-| `sort` | string | `lastActivityAt`, `createdAt`, `likes`, `voteCount`, `replyCount` |
-| `page` | int | Page number |
-| `page_size` | int | Results per page (1-100) |
+| `page` | int | Page number (starts at 1) |
+| `page_size` | int | Results per page |
 
 ### `list_topics`
 
-List and filter community topics with rich filtering options.
+List community topics, optionally filtered by content type.
 
 ```
-"Show me the most upvoted ideas from last month"
-"List all articles in the API category"
+"Show me all questions in the community"
+"List all articles"
 ```
 
 | Param | Type | Description |
 |-------|------|-------------|
-| `content_types` | string[] | Filter by content type(s) |
-| `category_ids` | string[] | Filter by category ID(s) |
-| `tags` | string | Comma-separated tags |
-| `moderator_tags` | string | Comma-separated moderator tags |
-| `sort` | string | Sort field |
-| `created_after` | string | ISO date, e.g. `"2025-01-01"` |
-| `created_before` | string | ISO date |
-| `page` / `page_size` | int | Pagination |
+| `content_type` | string | Filter to: `article`, `conversation`, `question`, `idea`, `productUpdate` |
+| `page` | int | Page number (starts at 1) |
+| `page_size` | int | Results per page |
 
 ### `get_topic`
 
-Retrieve full details for a specific topic, including body content and replies.
+Retrieve full details for a specific topic, including body content and replies. Automatically resolves the content type.
 
 | Param | Type | Description |
 |-------|------|-------------|
@@ -151,23 +143,16 @@ Retrieve full details for a specific topic, including body content and replies.
 
 ### `list_ideas`
 
-List feature ideas/requests, sorted by votes or activity. Convenience wrapper that filters topics to ideas only.
+List feature ideas/requests from the community.
 
 | Param | Type | Description |
 |-------|------|-------------|
-| `sort` | string | Sort field, e.g. `voteCount`, `createdAt`, `lastActivityAt` |
-| `tags` | string | Comma-separated public tags |
-| `created_after` | string | ISO date |
-| `created_before` | string | ISO date |
-| `page` / `page_size` | int | Pagination |
+| `page` | int | Page number (starts at 1) |
+| `page_size` | int | Results per page |
 
 ### `list_categories`
 
-List all community categories with their IDs — useful for filtering topics by category.
-
-| Param | Type | Description |
-|-------|------|-------------|
-| `page` / `page_size` | int | Pagination |
+List all community categories with their IDs — useful for discovering community structure.
 
 ## Example Prompts
 

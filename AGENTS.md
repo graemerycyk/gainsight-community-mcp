@@ -23,47 +23,54 @@ These descriptions help agents understand when to use each tool:
 
 | Tool | When to Use |
 |------|-------------|
-| `search_community` | User wants to find content by keyword. Best for broad, text-based searches. |
-| `list_topics` | User wants to browse or filter topics by type, category, tags, or date. Best for structured queries. |
-| `get_topic` | User wants the full content and replies of a specific topic (needs a topic ID from search/list results). |
-| `list_ideas` | User wants to see feature requests or ideas — shortcut for `list_topics` with `content_types=["idea"]`. |
-| `list_categories` | User wants to understand the community structure, or needs category IDs for filtering. Often a good first step. |
+| `search_community` | User wants to find content by keyword. Best for broad, text-based searches across all content types. |
+| `list_topics` | User wants to browse topics. Set `content_type` to filter to a specific type (question, article, idea, conversation, productUpdate). Without a type, returns all content. |
+| `get_topic` | User wants the full content and replies of a specific topic (needs a topic ID from search/list results). Automatically resolves content type. |
+| `list_ideas` | User wants to see feature requests or ideas. Dedicated shortcut for idea content. |
+| `list_categories` | User wants to understand the community structure. Often a good first step. |
 
 ## Typical Agent Workflows
 
 ### Discovery Flow
 1. `list_categories` — understand community structure
-2. `list_topics(category_ids=[...])` — browse a specific category
-3. `get_topic(topic_id=...)` — read a specific thread
+2. `list_topics(content_type="question")` — browse questions
+3. `get_topic(topic_id=...)` — read a specific thread with replies
 
 ### Search Flow
 1. `search_community(query="...")` — find matching content
 2. `get_topic(topic_id=...)` — drill into a specific result
 
 ### Ideas/Roadmap Flow
-1. `list_ideas(sort="voteCount")` — see most-voted ideas
-2. `get_topic(topic_id=...)` — read full idea discussion
+1. `list_ideas()` — see community ideas
+2. `get_topic(topic_id=...)` — read full idea discussion with replies
 
 ## Data Flow
 
 ```
 Agent calls tool          Server processes          API request
 ─────────────────         ─────────────────         ─────────────────
-search_community    →     Build query params   →   GET /api/v2/search?q=...
+search_community    →     Build query params   →   GET /v2/topics/search?q=...
   query="SSO"             Strip None values
-  content_types=          Join lists to CSV
-    ["question"]          Ensure OAuth2 token
+                          Map pageSize param
+                          Ensure OAuth2 token
+                          (with scope=read)
 
-                    ←     Parse JSON response  ←   200 OK + JSON body
+                    ←     Parse JSON response  ←   200 OK + {"result": [...]}
                           Return as string
+
+get_topic           →     1. Lookup: GET /v2/topics?id=42
+  topic_id=42             2. Read contentType from result
+                          3. Detail: GET /v2/questions/42
+                          4. Replies: GET /v2/questions/42/replies
+                    ←     Merge detail + replies, return JSON
 ```
 
 ## Authentication Architecture
 
 ```
 First tool call:
-  1. POST /oauth2/token  (client_id + client_secret)
-  2. Receive access_token + expires_in
+  1. POST /oauth2/token  (client_id + client_secret + scope=read)
+  2. Receive access_token + expires_in (7200s / 2 hours)
   3. Cache token, set expiry = now + expires_in - 60s
 
 Subsequent calls:
@@ -71,13 +78,29 @@ Subsequent calls:
   - If token expired → repeat step 1-3
 ```
 
-The 60-second buffer prevents requests from failing due to clock skew or network latency.
+The 60-second buffer prevents requests from failing due to clock skew or network latency. The `scope=read` parameter is **required** — without it, the token is issued but API endpoints return 401.
+
+## API Structure
+
+The Gainsight Customer Communities API uses **content-type-specific endpoints**:
+
+| Content Type | List Endpoint | Detail Endpoint | Replies Endpoint |
+|-------------|---------------|-----------------|------------------|
+| All types | `GET /v2/topics` | — | — |
+| question | `GET /v2/questions` | `GET /v2/questions/{id}` | `GET /v2/questions/{id}/replies` |
+| conversation | `GET /v2/conversations` | `GET /v2/conversations/{id}` | `GET /v2/conversations/{id}/replies` |
+| article | `GET /v2/articles` | `GET /v2/articles/{id}` | `GET /v2/articles/{id}/replies` |
+| idea | `GET /v2/ideas` | `GET /v2/ideas/{id}` | — |
+| productUpdate | `GET /v2/productUpdates` | `GET /v2/productUpdates/{id}` | `GET /v2/productUpdates/{id}/replies` |
+
+Other endpoints: `/v2/categories`, `/v2/tags`, `/v2/topics/search`
+
+Pagination: `pageSize` and `page` (1-indexed). Default page size is 25.
 
 ## Error Handling
 
-Currently, HTTP errors propagate as `httpx.HTTPStatusError` exceptions. The MCP framework catches these and returns error responses to the agent. Future improvements could include:
+Currently, HTTP errors propagate as `httpx.HTTPStatusError` exceptions. The MCP framework catches these and returns error responses to the agent. The `get_topic` tool handles "not found" gracefully by returning a structured error object. Future improvements could include:
 
-- Structured error messages with community-specific context
 - Retry logic for transient failures (429, 503)
 - Graceful degradation when the API is unavailable
 
@@ -85,14 +108,16 @@ Currently, HTTP errors propagate as `httpx.HTTPStatusError` exceptions. The MCP 
 
 ### Adding New Tools
 
-The Gainsight Customer Communities API has additional endpoints not yet exposed:
+The Gainsight Customer Communities API has additional endpoints not yet exposed as MCP tools:
 
 | Potential Tool | API Endpoint | Use Case |
 |----------------|-------------|----------|
-| `get_user` | `GET /api/v2/users/{id}` | Look up community member profiles |
-| `list_tags` | `GET /api/v2/tags` | Discover available tags for filtering |
-| `get_category` | `GET /api/v2/categories/{id}` | Category details |
-| `list_product_updates` | Topics with `content_types=productUpdate` | Product changelog |
+| `list_tags` | `GET /v2/tags` | Discover available tags (client method exists) |
+| `list_product_updates` | `GET /v2/productUpdates` | Product changelog (client method exists) |
+| `list_questions` | `GET /v2/questions` | Dedicated question listing |
+| `list_conversations` | `GET /v2/conversations` | Dedicated conversation listing |
+| `list_articles` | `GET /v2/articles` | Dedicated article listing |
+| `get_user` | `GET /user` | Community member profiles |
 
 ### Adding Resources
 
@@ -107,5 +132,5 @@ When multiple agents use this server concurrently:
 
 - Each agent gets its own server process (launched by the host application)
 - Each process manages its own OAuth2 token independently
-- The Gainsight API may have rate limits — agents should paginate responsibly
+- The Gainsight API has rate limits (approximately 300 requests/minute) — agents should paginate responsibly
 - Token caching is per-process, so there's no shared state to coordinate
