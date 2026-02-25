@@ -341,8 +341,8 @@ gainsight-community-mcp/
 
 ## API Documentation
 
-- [Community API Docs (EU)](https://api2-eu-west-1.insided.com/docs/)
-- [Community API Docs (US)](https://api2-us-west-2.insided.com/docs/)
+- [Community API Docs (EU)](https://api2-eu-west-1.insided.com/docs/) · [Search API (EU)](https://api2-eu-west-1.insided.com/docs/search/)
+- [Community API Docs (US)](https://api2-us-west-2.insided.com/docs/) · [Search API (US)](https://api2-us-west-2.insided.com/docs/search/)
 - [API Credentials Guide](https://communities.gainsight.com/api-55/api-documentation-how-to-get-api-credentials-18403)
 
 ## License
