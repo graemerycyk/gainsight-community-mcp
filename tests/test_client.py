@@ -439,6 +439,30 @@ async def test_us_region_api_call(
 # ---- Error cases ----
 
 
+# ---- Community URL tests ----
+
+
+def test_community_url_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GS_CC_COMMUNITY_URL", "https://community.example.com")
+    client = GainsightClient()
+    assert client.community_url == "https://community.example.com"
+
+
+def test_community_url_from_constructor(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("GS_CC_COMMUNITY_URL", raising=False)
+    client = GainsightClient(community_url="https://my.community.com")
+    assert client.community_url == "https://my.community.com"
+
+
+def test_community_url_defaults_to_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("GS_CC_COMMUNITY_URL", raising=False)
+    client = GainsightClient()
+    assert client.community_url is None
+
+
+# ---- Error cases ----
+
+
 def test_invalid_region(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GS_CC_REGION", "ap-southeast-1")
     with pytest.raises(ValueError, match="Unknown region"):

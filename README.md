@@ -16,7 +16,7 @@ A third-party [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) s
 - **Check idea statuses** to understand the feature pipeline
 - **Read poll results** and individual replies
 
-All 15 tools are **read-only** — safe to use with AI agents.
+All 16 tools are **read-only** — safe to use with AI agents.
 
 ## Prerequisites
 
@@ -58,6 +58,7 @@ docker build -t gainsight-community-mcp .
 | `GS_CC_CLIENT_ID` | Yes | — | OAuth2 client ID from your community admin panel |
 | `GS_CC_CLIENT_SECRET` | Yes | — | OAuth2 client secret |
 | `GS_CC_REGION` | No | `eu-west-1` | API region: `eu-west-1` or `us-west-2` |
+| `GS_CC_COMMUNITY_URL` | No | — | Community front-end URL (e.g. `https://community.example.com`) |
 
 ### Claude Desktop
 
@@ -73,7 +74,8 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
       "env": {
         "GS_CC_CLIENT_ID": "your_client_id",
         "GS_CC_CLIENT_SECRET": "your_client_secret",
-        "GS_CC_REGION": "eu-west-1"
+        "GS_CC_REGION": "eu-west-1",
+        "GS_CC_COMMUNITY_URL": "https://community.example.com"
       }
     }
   }
@@ -91,7 +93,8 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
       "env": {
         "GS_CC_CLIENT_ID": "your_client_id",
         "GS_CC_CLIENT_SECRET": "your_client_secret",
-        "GS_CC_REGION": "eu-west-1"
+        "GS_CC_REGION": "eu-west-1",
+        "GS_CC_COMMUNITY_URL": "https://community.example.com"
       }
     }
   }
@@ -257,6 +260,10 @@ Fetch a single reply by its ID.
 | `topic_id` | int (required) | The numeric ID of the parent topic |
 | `reply_id` | int (required) | The numeric ID of the reply |
 | `content_type` | string (required) | The content type: `article`, `conversation`, `question`, `idea`, or `productUpdate` |
+
+### `get_community_info`
+
+Get basic information about the connected community, including the front-end URL (if configured via `GS_CC_COMMUNITY_URL`) and the API region. Useful for constructing links to community content.
 
 ## Example Prompts
 

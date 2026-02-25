@@ -33,10 +33,12 @@ class GainsightClient:
         client_id: str | None = None,
         client_secret: str | None = None,
         region: str | None = None,
+        community_url: str | None = None,
     ) -> None:
         self.client_id = client_id or os.environ["GS_CC_CLIENT_ID"]
         self.client_secret = client_secret or os.environ["GS_CC_CLIENT_SECRET"]
         self.region = region or os.environ.get("GS_CC_REGION", "eu-west-1")
+        self.community_url = community_url or os.environ.get("GS_CC_COMMUNITY_URL")
 
         if self.region not in REGION_BASE_URLS:
             raise ValueError(

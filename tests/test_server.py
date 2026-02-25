@@ -24,6 +24,7 @@ from src.server import (
     list_product_areas,
     get_poll_results,
     get_reply,
+    get_community_info,
 )
 
 
@@ -453,3 +454,34 @@ async def test_get_reply_tool() -> None:
     assert result["id"] == "200"
     assert result["content"] == "Helpful answer"
     mock.get_reply.assert_called_once_with("article", 5, 200)
+
+
+# ---- get_community_info ----
+
+
+async def test_get_community_info_with_url() -> None:
+    mock = _make_client_mock()
+    mock.region = "eu-west-1"
+    mock.base_url = "https://api2-eu-west-1.insided.com"
+    mock.community_url = "https://community.example.com"
+
+    with patch.object(server_module, "_client", mock):
+        result = json.loads(await get_community_info())
+
+    assert result["region"] == "eu-west-1"
+    assert result["api_base_url"] == "https://api2-eu-west-1.insided.com"
+    assert result["community_url"] == "https://community.example.com"
+
+
+async def test_get_community_info_without_url() -> None:
+    mock = _make_client_mock()
+    mock.region = "us-west-2"
+    mock.base_url = "https://api2-us-west-2.insided.com"
+    mock.community_url = None
+
+    with patch.object(server_module, "_client", mock):
+        result = json.loads(await get_community_info())
+
+    assert result["region"] == "us-west-2"
+    assert result["api_base_url"] == "https://api2-us-west-2.insided.com"
+    assert "community_url" not in result

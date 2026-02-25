@@ -403,6 +403,24 @@ async def get_reply(
     return json.dumps(result, indent=2)
 
 
+@mcp.tool()
+async def get_community_info() -> str:
+    """Get basic information about the connected community.
+
+    Returns the community front-end URL (if configured) and the API region.
+    Useful for constructing links to community content or confirming which
+    community the server is connected to.
+    """
+    client = _get_client()
+    info: dict[str, Any] = {
+        "region": client.region,
+        "api_base_url": client.base_url,
+    }
+    if client.community_url:
+        info["community_url"] = client.community_url
+    return json.dumps(info, indent=2)
+
+
 def main() -> None:
     mcp.run(transport="stdio")
 

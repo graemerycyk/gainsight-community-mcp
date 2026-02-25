@@ -4,7 +4,7 @@ This file provides context for Claude Code and other AI assistants working on th
 
 ## Project Overview
 
-This is a **Model Context Protocol (MCP) server** that connects to the **Gainsight Customer Communities** (formerly inSided) REST API. It exposes 15 read-only tools that let AI assistants search and browse community content.
+This is a **Model Context Protocol (MCP) server** that connects to the **Gainsight Customer Communities** (formerly inSided) REST API. It exposes 16 read-only tools that let AI assistants search and browse community content.
 
 This is a third-party, community-built integration — not officially affiliated with Gainsight.
 
@@ -19,7 +19,7 @@ src/
 ```
 
 - **`client.py`** handles all HTTP communication with the Gainsight API. It manages OAuth2 token acquisition (with `scope=read`), caching (with 60s pre-expiry refresh), and provides typed async methods for each API endpoint. The `CONTENT_TYPE_PATHS` mapping translates content types to their API path segments.
-- **`server.py`** defines 15 MCP tools using the `FastMCP` framework. Each tool function calls the client, transforms parameters, and returns JSON strings. A lazy-initialized module-level `_client` singleton is used.
+- **`server.py`** defines 16 MCP tools using the `FastMCP` framework. Each tool function calls the client, transforms parameters, and returns JSON strings. A lazy-initialized module-level `_client` singleton is used.
 
 ## Key Design Decisions
 
@@ -52,6 +52,7 @@ src/
 | `list_product_areas` | List product area taxonomy |
 | `get_poll_results` | Get poll results for a topic |
 | `get_reply` | Fetch a single reply by ID |
+| `get_community_info` | Get community front-end URL and API region |
 
 ## Environment Variables
 
@@ -60,6 +61,7 @@ src/
 | `GS_CC_CLIENT_ID` | Yes | — | OAuth2 client ID |
 | `GS_CC_CLIENT_SECRET` | Yes | — | OAuth2 client secret |
 | `GS_CC_REGION` | No | `eu-west-1` | `eu-west-1` or `us-west-2` |
+| `GS_CC_COMMUNITY_URL` | No | — | Community front-end URL (e.g. `https://community.example.com`) |
 
 ## API Endpoints Used
 
