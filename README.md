@@ -6,7 +6,8 @@ A third-party [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) s
 
 ## Features
 
-- **Search** community content by keyword across all content types
+- **Search** community content by keyword with filtering by category, content type, tags, and answered status
+- **Search tags** by name to discover exact tag names for filtering
 - **List & filter topics** by type, category, tags, date range, sort order, and more
 - **Retrieve full topic details** including body content and replies
 - **Browse ideas** and feature requests with vote counts
@@ -15,7 +16,7 @@ A third-party [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) s
 - **Check idea statuses** to understand the feature pipeline
 - **Read poll results** and individual replies
 
-All 14 tools are **read-only** — safe to use with AI agents.
+All 15 tools are **read-only** — safe to use with AI agents.
 
 ## Prerequisites
 
@@ -30,7 +31,7 @@ All 14 tools are **read-only** — safe to use with AI agents.
 3. Create new API client credentials
 4. Note your **Client ID**, **Client Secret**, and **Region** (EU or US)
 
-For more detail, see the [API documentation](https://developer.insided.com/).
+For more detail, see the [API credentials guide](https://communities.gainsight.com/api-55/api-documentation-how-to-get-api-credentials-18403).
 
 ## Installation
 
@@ -110,18 +111,37 @@ Check **Control → Integrations → API** in your admin panel if unsure.
 
 ### `search_community`
 
-Search community content by keyword across all content types.
+Search community content by keyword. Uses the same search algorithm as the community frontend and supports rich filtering.
 
 ```
 "Search the community for posts about SSO integration"
-"Find posts mentioning API"
+"Find answered questions about API in the Developer category"
+"Search for ideas tagged 'dark-mode'"
 ```
 
 | Param | Type | Description |
 |-------|------|-------------|
 | `query` | string (required) | Search term |
+| `category_ids` | string | Comma-separated category IDs to search within |
+| `content_types` | string | Comma-separated content types, e.g. `"question,idea,article"` |
+| `tags` | string | Comma-separated tags to filter results by |
+| `moderator_tags` | string | Comma-separated moderator tags to filter results by |
+| `has_answer` | bool | Set to `true` to only return questions that have answers |
 | `page` | int | Page number (starts at 1) |
-| `page_size` | int | Results per page |
+
+### `search_tags`
+
+Search for tags by name. Returns matching tags with their IDs and usage counts. Useful for discovering exact tag names before filtering topics or search results.
+
+```
+"Search for tags matching 'api'"
+"Find tags related to 'authentication'"
+```
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `query` | string | Search term to match against tag names |
+| `page` | int | Page number (starts at 1) |
 
 ### `list_topics`
 
@@ -244,6 +264,9 @@ Once configured, you can ask your AI assistant things like:
 
 **Search & browse:**
 - *"Search our community for posts about dark mode"*
+- *"Search for answered questions about SSO in the Developer category"*
+- *"Find all ideas tagged 'dark-mode'"*
+- *"What tags are related to 'authentication'?"*
 - *"What are the top 10 most voted ideas?"*
 - *"Show me all questions from last week that haven't been answered"*
 - *"Get the full thread for topic 12345"*
@@ -320,7 +343,7 @@ gainsight-community-mcp/
 
 - [Community API Docs (EU)](https://api2-eu-west-1.insided.com/docs/)
 - [Community API Docs (US)](https://api2-us-west-2.insided.com/docs/)
-- [API Credentials Guide](https://developer.insided.com/)
+- [API Credentials Guide](https://communities.gainsight.com/api-55/api-documentation-how-to-get-api-credentials-18403)
 
 ## License
 
