@@ -35,7 +35,9 @@ def _reset_client() -> None:
 
 
 def _make_client_mock() -> AsyncMock:
-    return AsyncMock()
+    mock = AsyncMock()
+    mock.community_url = None
+    return mock
 
 
 # ---- search_community ----
@@ -454,6 +456,72 @@ async def test_get_reply_tool() -> None:
     assert result["id"] == "200"
     assert result["content"] == "Helpful answer"
     mock.get_reply.assert_called_once_with("article", 5, 200)
+
+
+# ---- get_community_info ----
+
+
+# ---- URL resolution in search_community ----
+
+
+async def test_search_community_resolves_relative_urls() -> None:
+    mock = _make_client_mock()
+    mock.community_url = "https://community.example.com"
+    mock.search.return_value = {
+        "community": [
+            {"id": "1", "url": "/topic/show?tid=586&fid=37"},
+            {"id": "2", "url": "https://other.example.com/page"},
+        ]
+    }
+
+    with patch.object(server_module, "_client", mock):
+        result = json.loads(await search_community(query="test"))
+
+    assert result["community"][0]["url"] == "https://community.example.com/topic/show?tid=586&fid=37"
+    # Absolute URLs should not be modified
+    assert result["community"][1]["url"] == "https://other.example.com/page"
+
+
+async def test_search_community_no_resolution_without_community_url() -> None:
+    mock = _make_client_mock()
+    mock.community_url = None
+    mock.search.return_value = {
+        "community": [{"id": "1", "url": "/topic/show?tid=1"}]
+    }
+
+    with patch.object(server_module, "_client", mock):
+        result = json.loads(await search_community(query="test"))
+
+    # Relative URL should remain unchanged
+    assert result["community"][0]["url"] == "/topic/show?tid=1"
+
+
+# ---- URL resolution in get_topic ----
+
+
+async def test_get_topic_resolves_relative_urls() -> None:
+    mock = _make_client_mock()
+    mock.community_url = "https://community.example.com/"
+    mock.get_topic_by_id.return_value = {
+        "result": [{"id": "42", "contentType": "question"}]
+    }
+    mock.get_topic_detail.return_value = {
+        "id": "42",
+        "url": "/topic/show?tid=42",
+        "seoCommunityUrl": "/support-37/what-is-ai-answers-42",
+        "contentType": "question",
+    }
+    mock.get_topic_replies.return_value = {
+        "result": [{"id": "100", "url": "/reply/100"}],
+    }
+
+    with patch.object(server_module, "_client", mock):
+        result = json.loads(await get_topic(topic_id=42))
+
+    # Trailing slash on community_url should be handled
+    assert result["url"] == "https://community.example.com/topic/show?tid=42"
+    assert result["seoCommunityUrl"] == "https://community.example.com/support-37/what-is-ai-answers-42"
+    assert result["replies"]["result"][0]["url"] == "https://community.example.com/reply/100"
 
 
 # ---- get_community_info ----

@@ -33,6 +33,26 @@ def _clean(params: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in params.items() if v is not None}
 
 
+_URL_KEYS = {"url", "seoCommunityUrl"}
+
+
+def _resolve_urls(data: Any, community_url: str) -> Any:
+    """Prepend community_url to relative URL fields in API responses."""
+    if isinstance(data, dict):
+        base = community_url.rstrip("/")
+        return {
+            k: (
+                base + v
+                if k in _URL_KEYS and isinstance(v, str) and v.startswith("/")
+                else _resolve_urls(v, community_url)
+            )
+            for k, v in data.items()
+        }
+    if isinstance(data, list):
+        return [_resolve_urls(item, community_url) for item in data]
+    return data
+
+
 # ---------- Tools ----------
 
 
@@ -70,6 +90,8 @@ async def search_community(
         }
     )
     result = await client.search(params)
+    if client.community_url:
+        result = _resolve_urls(result, client.community_url)
     return json.dumps(result, indent=2)
 
 
@@ -206,6 +228,8 @@ async def get_topic(topic_id: int) -> str:
         replies = {"result": [], "_metadata": {"totalCount": 0}}
     topic["replies"] = replies
 
+    if client.community_url:
+        topic = _resolve_urls(topic, client.community_url)
     return json.dumps(topic, indent=2)
 
 
