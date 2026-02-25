@@ -10,6 +10,7 @@ import pytest
 from src import server as server_module
 from src.server import (
     search_community,
+    search_tags,
     list_topics,
     get_topic,
     list_ideas,
@@ -41,26 +42,89 @@ def _make_client_mock() -> AsyncMock:
 
 async def test_search_community() -> None:
     mock = _make_client_mock()
-    mock.search.return_value = {"result": [{"id": "1"}]}
+    mock.search.return_value = {"community": [{"id": "1"}]}
 
     with patch.object(server_module, "_client", mock):
         result = json.loads(await search_community(query="SSO"))
 
-    assert result["result"][0]["id"] == "1"
+    assert result["community"][0]["id"] == "1"
     mock.search.assert_called_once_with({"q": "SSO"})
 
 
 async def test_search_community_with_pagination() -> None:
     mock = _make_client_mock()
-    mock.search.return_value = {"result": []}
+    mock.search.return_value = {"community": []}
+
+    with patch.object(server_module, "_client", mock):
+        result = json.loads(await search_community(query="api", page=2))
+
+    assert result == {"community": []}
+    mock.search.assert_called_once_with({"q": "api", "page": 2})
+
+
+async def test_search_community_with_filters() -> None:
+    mock = _make_client_mock()
+    mock.search.return_value = {"community": [{"id": "2", "contentType": "question"}]}
 
     with patch.object(server_module, "_client", mock):
         result = json.loads(
-            await search_community(query="api", page=2, page_size=10)
+            await search_community(
+                query="SSO",
+                category_ids="1,2",
+                content_types="question",
+                tags="api,sso",
+                moderator_tags="internal",
+                has_answer=True,
+            )
         )
 
-    assert result == {"result": []}
-    mock.search.assert_called_once_with({"q": "api", "page": 2, "pageSize": 10})
+    assert result["community"][0]["contentType"] == "question"
+    call_params = mock.search.call_args[0][0]
+    assert call_params["q"] == "SSO"
+    assert call_params["categoryIds"] == "1,2"
+    assert call_params["contentTypes"] == "question"
+    assert call_params["tags"] == "api,sso"
+    assert call_params["moderatorTags"] == "internal"
+    assert call_params["hasAnswer"] is True
+
+
+async def test_search_community_none_filters_excluded() -> None:
+    mock = _make_client_mock()
+    mock.search.return_value = {"community": []}
+
+    with patch.object(server_module, "_client", mock):
+        await search_community(query="test")
+
+    call_params = mock.search.call_args[0][0]
+    assert "categoryIds" not in call_params
+    assert "contentTypes" not in call_params
+    assert "tags" not in call_params
+    assert "hasAnswer" not in call_params
+
+
+# ---- search_tags ----
+
+
+async def test_search_tags_tool() -> None:
+    mock = _make_client_mock()
+    mock.search_tags.return_value = {"tags": [{"id": "1", "name": "api", "count": 42}]}
+
+    with patch.object(server_module, "_client", mock):
+        result = json.loads(await search_tags(query="api"))
+
+    assert result["tags"][0]["name"] == "api"
+    assert result["tags"][0]["count"] == 42
+    mock.search_tags.assert_called_once_with({"q": "api"})
+
+
+async def test_search_tags_with_pagination() -> None:
+    mock = _make_client_mock()
+    mock.search_tags.return_value = {"tags": []}
+
+    with patch.object(server_module, "_client", mock):
+        await search_tags(query="test", page=2)
+
+    mock.search_tags.assert_called_once_with({"q": "test", "page": 2})
 
 
 # ---- list_topics ----

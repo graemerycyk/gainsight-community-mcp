@@ -92,8 +92,16 @@ class GainsightClient:
     # ---- public API methods ----
 
     async def search(self, params: dict[str, Any]) -> Any:
-        """Search topics by keyword.  GET /v2/topics/search"""
-        return await self._request("GET", "/v2/topics/search", params=params)
+        """Search community content.  GET /search
+
+        Uses the dedicated Search API which supports filtering by
+        categoryIds, contentTypes, tags, moderatorTags, and hasAnswer.
+        """
+        return await self._request("GET", "/search", params=params)
+
+    async def search_tags(self, params: dict[str, Any]) -> Any:
+        """Search for tags by name.  GET /search/tags"""
+        return await self._request("GET", "/search/tags", params=params)
 
     async def list_topics(self, params: dict[str, Any]) -> Any:
         """List all topics.  GET /v2/topics"""

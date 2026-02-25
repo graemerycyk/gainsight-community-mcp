@@ -39,25 +39,62 @@ def _clean(params: dict[str, Any]) -> dict[str, Any]:
 @mcp.tool()
 async def search_community(
     query: str,
+    category_ids: str | None = None,
+    content_types: str | None = None,
+    tags: str | None = None,
+    moderator_tags: str | None = None,
+    has_answer: bool | None = None,
     page: int | None = None,
-    page_size: int | None = None,
 ) -> str:
-    """Search community content by keyword across all content types.
+    """Search community content by keyword. Uses the same search algorithm as the community frontend.
 
     Args:
         query: Search term (required).
+        category_ids: Comma-separated category IDs to search within.
+        content_types: Comma-separated content types to search (e.g. "question,idea,article").
+        tags: Comma-separated tags to filter results by.
+        moderator_tags: Comma-separated moderator tags to filter results by.
+        has_answer: Set to true to only return questions that have answers.
         page: Page number for pagination (starts at 1).
-        page_size: Results per page.
+    """
+    client = _get_client()
+    params = _clean(
+        {
+            "q": query,
+            "categoryIds": category_ids,
+            "contentTypes": content_types,
+            "tags": tags,
+            "moderatorTags": moderator_tags,
+            "hasAnswer": has_answer,
+            "page": page,
+        }
+    )
+    result = await client.search(params)
+    return json.dumps(result, indent=2)
+
+
+@mcp.tool()
+async def search_tags(
+    query: str | None = None,
+    page: int | None = None,
+) -> str:
+    """Search for tags by name. Returns matching tags with their IDs and usage counts.
+
+    Useful for discovering the exact tag name before filtering topics or
+    search results by tag.
+
+    Args:
+        query: Search term to match against tag names.
+        page: Page number for pagination (starts at 1).
     """
     client = _get_client()
     params = _clean(
         {
             "q": query,
             "page": page,
-            "pageSize": page_size,
         }
     )
-    result = await client.search(params)
+    result = await client.search_tags(params)
     return json.dumps(result, indent=2)
 
 

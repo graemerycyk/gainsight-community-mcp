@@ -4,7 +4,7 @@ This file provides context for Claude Code and other AI assistants working on th
 
 ## Project Overview
 
-This is a **Model Context Protocol (MCP) server** that connects to the **Gainsight Customer Communities** (formerly inSided) REST API. It exposes 14 read-only tools that let AI assistants search and browse community content.
+This is a **Model Context Protocol (MCP) server** that connects to the **Gainsight Customer Communities** (formerly inSided) REST API. It exposes 15 read-only tools that let AI assistants search and browse community content.
 
 This is a third-party, community-built integration — not officially affiliated with Gainsight.
 
@@ -19,7 +19,7 @@ src/
 ```
 
 - **`client.py`** handles all HTTP communication with the Gainsight API. It manages OAuth2 token acquisition (with `scope=read`), caching (with 60s pre-expiry refresh), and provides typed async methods for each API endpoint. The `CONTENT_TYPE_PATHS` mapping translates content types to their API path segments.
-- **`server.py`** defines 14 MCP tools using the `FastMCP` framework. Each tool function calls the client, transforms parameters, and returns JSON strings. A lazy-initialized module-level `_client` singleton is used.
+- **`server.py`** defines 15 MCP tools using the `FastMCP` framework. Each tool function calls the client, transforms parameters, and returns JSON strings. A lazy-initialized module-level `_client` singleton is used.
 
 ## Key Design Decisions
 
@@ -37,7 +37,8 @@ src/
 
 | Tool | Description |
 |------|-------------|
-| `search_community` | Full-text search across all content types |
+| `search_community` | Full-text search with filtering (categories, content types, tags, hasAnswer) |
+| `search_tags` | Search for tags by name (returns matching tags with IDs and usage counts) |
 | `list_topics` | List/filter topics with rich filtering (category, tags, dates, sort, content types) |
 | `get_topic` | Get full topic detail + replies by ID (auto-detects content type) |
 | `list_ideas` | List feature ideas |
@@ -67,7 +68,8 @@ All requests go to `https://api2-{region}.insided.com`:
 | Method | Path | Used By |
 |--------|------|---------|
 | POST | `/oauth2/token` | Token acquisition (must include `scope=read`) |
-| GET | `/v2/topics/search` | `search_community` |
+| GET | `/search` | `search_community` (dedicated Search API with filtering) |
+| GET | `/search/tags` | `search_tags` |
 | GET | `/v2/topics` | `list_topics` (unified with filtering), `get_topic` (ID lookup) |
 | GET | `/v2/questions` | `list_topics(content_type="question")` |
 | GET | `/v2/conversations` | `list_topics(content_type="conversation")` |
@@ -105,7 +107,9 @@ The `list_topics` tool (without `content_type`) and `list_topics_by_category` su
 
 ### Response Format
 
-All list endpoints return `{"result": [...]}`. Replies also include `{"_metadata": {"totalCount": N, "limit": N, "offset": N}}`.
+Most `/v2/` list endpoints return `{"result": [...]}`. Replies also include `{"_metadata": {"totalCount": N, "limit": N, "offset": N}}`.
+
+The dedicated Search API (`/search`) returns `{"community": [...]}`. The tag search (`/search/tags`) returns `{"tags": [...]}`.
 
 ## Development Commands
 
@@ -150,6 +154,7 @@ The token logic is in `GainsightClient._ensure_token()` in `client.py`. The toke
 ## Gotchas
 
 - **`scope=read` is required**: Without it, the token is issued but all API endpoints return 401.
+- **Search API uses `/search`, not `/v2/`**: The dedicated Search API lives at `/search` and `/search/tags` (not under `/v2/`). It uses the same search algorithm as the frontend UI and supports filtering by `categoryIds`, `contentTypes`, `tags`, `moderatorTags`, and `hasAnswer`. The response format differs: `{"community": [...]}` instead of `{"result": [...]}`.
 - **API paths are `/v2/...`**, not `/api/v2/...` — there is no `/api` prefix.
 - **Content types have separate endpoints**: `/v2/topics` returns all types but doesn't support type filtering. Use `/v2/questions`, `/v2/ideas`, etc. for type-specific listing.
 - **Topic detail requires content type**: There is no `/v2/topics/{id}` — you must use `/v2/questions/{id}`, `/v2/articles/{id}`, etc. The `get_topic` tool handles this by looking up the topic first.

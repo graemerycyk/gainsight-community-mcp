@@ -81,14 +81,53 @@ async def test_token_caching(respx_mock: respx.MockRouter, client: GainsightClie
 @respx.mock(base_url=EU_BASE)
 async def test_search(respx_mock: respx.MockRouter, client: GainsightClient) -> None:
     _mock_token(respx_mock)
-    respx_mock.get("/v2/topics/search").mock(
+    respx_mock.get("/search").mock(
         return_value=httpx.Response(
-            200, json={"result": [{"id": "1", "title": "SSO"}]}
+            200, json={"community": [{"id": "1", "title": "SSO"}]}
         )
     )
 
     result = await client.search({"q": "SSO"})
-    assert result["result"][0]["title"] == "SSO"
+    assert result["community"][0]["title"] == "SSO"
+    await client.close()
+
+
+@respx.mock(base_url=EU_BASE)
+async def test_search_with_filters(respx_mock: respx.MockRouter, client: GainsightClient) -> None:
+    _mock_token(respx_mock)
+    route = respx_mock.get("/search").mock(
+        return_value=httpx.Response(
+            200, json={"community": [{"id": "2", "contentType": "question"}]}
+        )
+    )
+
+    result = await client.search({
+        "q": "SSO",
+        "categoryIds": "1,2",
+        "contentTypes": "question",
+        "tags": "api",
+        "hasAnswer": True,
+    })
+    assert result["community"][0]["contentType"] == "question"
+
+    request = route.calls[0].request
+    assert "categoryIds" in str(request.url)
+    assert "contentTypes" in str(request.url)
+    await client.close()
+
+
+@respx.mock(base_url=EU_BASE)
+async def test_search_tags(respx_mock: respx.MockRouter, client: GainsightClient) -> None:
+    _mock_token(respx_mock)
+    respx_mock.get("/search/tags").mock(
+        return_value=httpx.Response(
+            200, json={"tags": [{"id": "1", "name": "api", "count": 42}]}
+        )
+    )
+
+    result = await client.search_tags({"q": "api"})
+    assert result["tags"][0]["name"] == "api"
+    assert result["tags"][0]["count"] == 42
     await client.close()
 
 
